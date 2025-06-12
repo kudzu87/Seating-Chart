@@ -4,10 +4,8 @@
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {  <-- ADD THIS SECTION IF IT DOESN'T EXIST
-    "react-scripts": "5.0.1" <-- ADD THIS LINE (use the version compatible with your React)
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"  <-- ENSURE THIS LINE IS HERE, IN "dependencies"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -27,4 +25,5 @@
       "last 1 safari version"
     ]
   }
+}
 }
