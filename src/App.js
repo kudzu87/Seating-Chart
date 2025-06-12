@@ -82,6 +82,7 @@ const App = () => {
                 width: defaultWidth,
                 height: defaultHeight,
                 rotation: 0, // Default to 0 degrees
+                tableNumber: '', // New: Default empty string for table number
             };
             newElements.push(newPrimaryElement);
 
@@ -181,22 +182,63 @@ const App = () => {
 
         setSelectedElementId(elementId); // Set the selected element ID
 
-        const svgRect = svgRef.current.getBoundingClientRect(); // Get SVG's position on screen
+        const draggedEl = elements.find(el => el.id === elementId);
+        if (!draggedEl || !svgRef.current || !propertiesPanelRef.current) return;
+
+        // Calculate and set panel position immediately on selection
+        const svgRect = svgRef.current.getBoundingClientRect();
+        // Use default panel dimensions if ref is not yet available, to prevent layout shift initially
+        const panelWidth = propertiesPanelRef.current.offsetWidth || 384; // max-w-sm is 384px in Tailwind
+        const panelHeight = propertiesPanelRef.current.offsetHeight || 400; // Estimate a common height
+
+        const padding = 20;
+
+        let newLeft = 'auto';
+        let newRight = 'auto';
+        let newTop = padding;
+        let newBottom = 'auto';
+
+        // Use the element's center X relative to the SVG's internal coordinate system
+        const elementCenterX = draggedEl.x;
+        const roomHalfWidth = roomWidth / 2; // Assuming roomWidth is the max possible X for SVG
+
+        if (elementCenterX < roomHalfWidth) {
+            // Element is on the left half of the room, so place panel on the right side of the viewport
+            newRight = padding;
+            newLeft = 'auto'; // Ensure left is not set
+        } else {
+            // Element is on the right half of the room, so place panel on the left side of the viewport
+            newLeft = padding;
+            newRight = 'auto'; // Ensure right is not set
+        }
+
+        // Adjust vertical position to roughly center the panel in the available vertical space
+        // or ensure it fits within the viewport.
+        const availableHeight = window.innerHeight - 2 * padding;
+        const centerOffset = (availableHeight - panelHeight) / 2;
+        newTop = Math.max(padding, Math.min(window.innerHeight - panelHeight - padding, padding + centerOffset));
+
+        setPanelPosition({
+            position: 'fixed',
+            top: newTop,
+            left: newLeft,
+            right: newRight,
+            bottom: newBottom,
+            opacity: 1,
+            zIndex: 50
+        });
+
+        // Continue with drag setup
         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
 
         setDraggedElementId(elementId);
-
-        const draggedEl = elements.find(el => el.id === elementId);
-        if (!draggedEl) return; // Should not happen if elementId is valid
-
-        // Store the offset of the mouse click from the element's origin (x,y)
-        // This offset is maintained throughout the drag.
         setDragOffset({
             x: clientX - svgRect.left - draggedEl.x,
             y: clientY - svgRect.top - draggedEl.y,
         });
-    }, [elements]); // Dependency on elements is crucial for `draggedEl` lookup
+    }, [elements, roomWidth, roomHeight]); // dependencies: elements (for draggedEl), roomWidth/Height (for halfWidth logic)
+
 
     // Callback for when mouse/touch moves
     const handleMouseMove = useCallback((e) => {
@@ -253,6 +295,8 @@ const App = () => {
         // Only deselect if the click target is the SVG itself, not an element within it
         if (e.target === svgRef.current) {
             setSelectedElementId(null);
+            // Hide the properties panel when clicking on the background
+            setPanelPosition({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 });
         }
     }, []);
 
@@ -284,6 +328,10 @@ const App = () => {
                     // Handle guestName for chairs
                     if (el.type === 'chair' && name === 'guestName') {
                         return { ...el, guestName: value };
+                    }
+                    // Handle tableNumber for tables
+                    if (el.type === 'table' && name === 'tableNumber') {
+                        return { ...el, tableNumber: value };
                     }
 
                     let updatedValue = value;
@@ -323,6 +371,7 @@ const App = () => {
             }
         });
         setSelectedElementId(null); // Deselect after deleting
+        setPanelPosition({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 }); // Hide panel on delete
     }, [selectedElementId]);
 
     // Function to rotate the selected table or wall
@@ -402,9 +451,66 @@ const App = () => {
         setGuestModalContext(null);
     }, [guestNameInput, guestModalContext, selectedElementId]);
 
+    // Function to generate and download guest list by table number
+    const handleDownloadGuestList = useCallback(() => {
+        const guestList = {};
+        const tables = elements.filter(el => el.type === 'table');
+
+        // Create a map from table ID to table number for easy lookup
+        const tableNumberMap = tables.reduce((acc, table) => {
+            acc[table.id] = table.tableNumber || 'Unassigned Table';
+            return acc;
+        }, {});
+
+        // Group guests by table number
+        elements.forEach(el => {
+            if (el.type === 'chair' && el.guestName) {
+                const tableNum = tableNumberMap[el.parentId] || 'Standalone Chairs';
+                if (!guestList[tableNum]) {
+                    guestList[tableNum] = [];
+                }
+                guestList[tableNum].push(el.guestName);
+            }
+        });
+
+        // Format the data for download as a plain text string
+        let textContent = "Wedding Guest List\n\n";
+
+        // Get sorted table numbers/categories
+        const sortedTableNumbers = Object.keys(guestList).sort((a, b) => {
+            // Custom sort to put "Unassigned Table" and "Standalone Chairs" at the end
+            if (a === 'Unassigned Table') return 1;
+            if (b === 'Unassigned Table') return -1;
+            if (a === 'Standalone Chairs') return 1;
+            if (b === 'Standalone Chairs') return -1;
+            // Otherwise, sort numerically or alphabetically
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        sortedTableNumbers.forEach(tableNum => {
+            textContent += `--- ${tableNum} ---\n`;
+            guestList[tableNum].sort().forEach(guest => {
+                textContent += `- ${guest}\n`;
+            });
+            textContent += "\n";
+        });
+
+        // Create a Blob and download link
+        const blob = new Blob([textContent], { type: 'text/plain' }); // Changed type to text/plain
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wedding_guest_list.txt'; // Changed filename extension
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url); // Clean up the URL object
+    }, [elements]);
+
+
     // Component to render a single Table
     const Table = ({ table, onMouseDown, isSelected }) => {
-        const { id, x, y, shape, width, height, rotation } = table; // Destructure rotation
+        const { id, x, y, shape, width, height, rotation, tableNumber } = table; // Destructure rotation and tableNumber
         const isRound = shape === 'round';
 
         const strokeColor = isSelected ? '#3B82F6' : '#4B5563'; // Blue when selected, otherwise gray
@@ -443,8 +549,8 @@ const App = () => {
                     />
                 )}
                 {/* Table label */}
-                <text x={Number(x)} y={Number(y + (isRound ? 5 : 0))} textAnchor="middle" alignmentBaseline="middle" fill="#1F2937" fontSize="12" fontWeight="bold">
-                    Guest Table
+                <text x={Number(x)} y={Number(y - 10)} textAnchor="middle" alignmentBaseline="middle" fill="#1F2937" fontSize="12" fontWeight="bold">
+                    {tableNumber ? `Table ${tableNumber}` : 'Guest Table'}
                 </text>
             </g>
         );
@@ -483,11 +589,11 @@ const App = () => {
                 {guestName && (
                     <text
                         x={Number(x)}
-                        y={Number(y + 15)} // Position below the line
+                        y={Number(y - 5)} // Changed to be above the line
                         fill="#374151" // Text color
                         fontSize="12" // Increased font size
                         textAnchor="middle"
-                        alignmentBaseline="middle"
+                        alignmentBaseline="alphabetic" // Adjusted for 'above' positioning
                         fontWeight="bold" // Made text bold
                         pointerEvents="none" // Important: prevents text from capturing click, allowing hitbox to work
                     >
@@ -564,59 +670,9 @@ const App = () => {
         );
     };
 
-    // Effect to update panel position when selectedElement changes
-    useEffect(() => {
-        if (!selectedElement || !svgRef.current || !propertiesPanelRef.current) {
-            // Hide or reset panel position when nothing is selected
-            setPanelPosition({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 }); // Hide it
-            return;
-        }
-
-        const svgRect = svgRef.current.getBoundingClientRect();
-        const panelWidth = propertiesPanelRef.current.offsetWidth; // Use offsetWidth for actual rendered width
-        const panelHeight = propertiesPanelRef.current.offsetHeight; // Use offsetHeight for actual rendered height
-
-        const padding = 20; // Padding from screen edges
-        const availableHeight = window.innerHeight - 2 * padding; // Max height for panel vertical placement
-
-        let newLeft = 'auto';
-        let newRight = 'auto';
-        let newTop = padding; // Default to top padding
-        let newBottom = 'auto';
-
-        // Calculate if the selected element is on the left or right half of the SVG room
-        // Use the element's center X relative to the SVG's internal coordinate system
-        const elementCenterX = selectedElement.x;
-        const roomHalfWidth = roomWidth / 2;
-
-        if (elementCenterX < roomHalfWidth) {
-            // Element is on the left half of the room, so place panel on the right side of the viewport
-            newRight = padding;
-            newLeft = 'auto'; // Ensure left is not set
-        } else {
-            // Element is on the right half of the room, so place panel on the left side of the viewport
-            newLeft = padding;
-            newRight = 'auto'; // Ensure right is not set
-        }
-
-        // Adjust vertical position to roughly center the panel in the available vertical space
-        // or ensure it fits within the viewport.
-        const centerOffset = (availableHeight - panelHeight) / 2;
-        newTop = Math.max(padding, Math.min(window.innerHeight - panelHeight - padding, padding + centerOffset));
-
-
-        setPanelPosition({
-            position: 'fixed',
-            top: newTop,
-            left: newLeft,
-            right: newRight,
-            bottom: newBottom,
-            opacity: 1,
-            zIndex: 50
-        });
-
-    }, [selectedElement, roomWidth, roomHeight, window.innerWidth, window.innerHeight]); // Add window dimensions as dependencies for responsiveness
-
+    // No dedicated useEffect for panel position updates.
+    // Position is set directly in handleMouseDown when an element is selected.
+    // It's hidden in handleSvgClick and handleDeleteElement.
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-100 to-pink-100 p-4 font-inter text-gray-800 flex flex-col items-center">
@@ -746,6 +802,12 @@ const App = () => {
                     Add Wall
                 </button>
                 <button
+                    onClick={handleDownloadGuestList} // New button to download guest list
+                    className="px-4 py-2 text-sm bg-teal-500 text-white rounded-lg shadow-md hover:bg-teal-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75"
+                >
+                    Download Guest List
+                </button>
+                <button
                     onClick={() => {
                         setElements([]);
                         setSelectedElementId(null);
@@ -872,6 +934,7 @@ const App = () => {
             {selectedElement && (
                 <div
                     ref={propertiesPanelRef} // Assign ref to the properties panel
+                    data-selected-id={selectedElementId} // Store selected ID for effect dependency
                     style={{
                         position: panelPosition.position,
                         top: panelPosition.top,
@@ -880,7 +943,7 @@ const App = () => {
                         bottom: panelPosition.bottom,
                         opacity: panelPosition.opacity,
                         zIndex: panelPosition.zIndex,
-                        transition: 'top 0.2s ease-out, left 0.2s ease-out, opacity 0.2s ease-out', // Smooth transition
+                        transition: 'top 0.2s ease-out, left 0.2s ease-out, right 0.2s ease-out, opacity 0.2s ease-out', // Smooth transition
                     }}
                     className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border border-blue-200 flex flex-col gap-4" // Removed mt-6, fixed width for predictability
                 >
@@ -920,6 +983,18 @@ const App = () => {
                                         className="border border-gray-300 p-2 rounded-lg w-full"
                                     />
                                 </div>
+                            </div>
+                            <div className="input-group"> {/* New input for table number */}
+                                <label htmlFor="tableNumber">Table Number:</label>
+                                <input
+                                    type="text"
+                                    id="tableNumber"
+                                    name="tableNumber"
+                                    value={selectedElement.tableNumber}
+                                    onChange={handlePropertyChange}
+                                    className="border border-gray-300 p-2 rounded-lg w-full"
+                                    placeholder="e.g., 1, A, Main"
+                                />
                             </div>
                             <button
                                 onClick={handleRotateElement}
