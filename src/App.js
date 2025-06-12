@@ -219,7 +219,7 @@ const App = () => {
                 width: defaultWidth,
                 height: defaultHeight,
                 rotation: 0,
-                tableNumber: '',
+                tableNumber: '', // This will be the name for guest tables
             };
             newElements.push(newPrimaryElement);
 
@@ -277,7 +277,7 @@ const App = () => {
                 width: 150,
                 height: 80,
                 rotation: 0,
-                name: 'Food Table',
+                name: 'Food Table', // Name for food tables
             };
             newElements.push(newPrimaryElement);
         } else if (type === 'chair') {
@@ -436,6 +436,7 @@ const App = () => {
                     if (el.type === 'chair' && name === 'guestName') {
                         return { ...el, guestName: value };
                     }
+                    // Renaming tables: uses 'tableNumber' as the property
                     if (el.type === 'table' && name === 'tableNumber') {
                         return { ...el, tableNumber: value };
                     }
@@ -480,6 +481,7 @@ const App = () => {
     const handleRotateElement = useCallback(() => {
         setElements(prevElements => {
             const selectedEl = prevElements.find(el => el.id === selectedElementId);
+            // Allow rotation for tables, walls, and food tables
             if (!selectedEl || (selectedEl.type !== 'table' && selectedEl.type !== 'wall' && selectedEl.type !== 'foodTable')) {
                 return prevElements;
             }
@@ -596,6 +598,7 @@ const App = () => {
         const tables = elements.filter(el => el.type === 'table');
 
         const tableNumberMap = tables.reduce((acc, table) => {
+            // Use tableNumber for guest tables
             acc[table.id] = table.tableNumber || 'Unassigned Table';
             return acc;
         }, {});
@@ -736,7 +739,19 @@ const App = () => {
                         rx="10" ry="10"
                     />
                 )}
-                <text x={Number(x)} y={Number(y - 10)} textAnchor="middle" alignmentBaseline="middle" fill="#1F2937" fontSize="12" fontWeight="bold">
+                <text
+                    x={Number(x)}
+                    y={Number(y)} // Changed to center vertically
+                    textAnchor="middle"
+                    alignmentBaseline="middle"
+                    fill="#1F2937" // Changed fill to black
+                    fontSize="16" // Increased font size
+                    fontWeight="bold"
+                    stroke="white" // Added stroke for readability
+                    strokeWidth="0.5" // Thin stroke
+                    pointerEvents="none" // Ensure text doesn't interfere with dragging
+                    transform={`rotate(${-Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`} // Counter-rotate text
+                >
                     {tableNumber ? `Table ${tableNumber}` : 'Guest Table'}
                 </text>
             </g>
@@ -812,7 +827,19 @@ const App = () => {
                     strokeWidth={strokeWidth}
                     rx="10" ry="10"
                 />
-                <text x={Number(x)} y={Number(y)} textAnchor="middle" alignmentBaseline="middle" fill="#B91C1C" fontSize="14" fontWeight="bold">
+                <text
+                    x={Number(x)}
+                    y={Number(y)} // Changed to center vertically
+                    textAnchor="middle"
+                    alignmentBaseline="middle"
+                    fill="#1F2937" // Changed fill to black
+                    fontSize="16" // Increased font size
+                    fontWeight="bold"
+                    stroke="white" // Added stroke for readability
+                    strokeWidth="0.5" // Thin stroke
+                    pointerEvents="none" // Ensure text doesn't interfere with dragging
+                    transform={`rotate(${-Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`} // Counter-rotate text
+                >
                     {name || 'Food Table'}
                 </text>
             </g>
@@ -911,22 +938,6 @@ const App = () => {
 
             <h1 className="text-4xl font-bold text-purple-700 mb-6 drop-shadow-lg">Wedding Seating Chart</h1>
 
-            {/* User ID and Save Status - Removed as cloud save is removed */}
-            {/* <div className="text-sm text-gray-600 mb-2">
-                {userId ? `User ID: ${userId}` : 'Authenticating...'}
-                {saveStatus && <span className="ml-4 font-semibold text-blue-700">{saveStatus}</span>}
-            </div> */}
-            {/* Loading Indicator - Removed as cloud save is removed */}
-            {/* {loading && (
-                <div className="flex items-center justify-center mb-4 text-blue-600">
-                    <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Loading Project...
-                </div>
-            )} */}
-
             {/* Controls for adding elements and room dimensions */}
             <div className="bg-white p-2 rounded-xl shadow-lg flex flex-wrap gap-2 mb-4 justify-center w-full max-w-5xl">
                 <div className="input-group flex-1 min-w-[120px] max-w-[150px]">
@@ -990,13 +1001,6 @@ const App = () => {
                 >
                     Add Wall
                 </button>
-                {/* Removed Save to Cloud Button */}
-                {/* <button
-                    onClick={saveProject}
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
-                >
-                    Save to Cloud
-                </button> */}
                 <button
                     onClick={handleDownloadProject}
                     className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg shadow-md hover:bg-purple-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
@@ -1200,7 +1204,7 @@ const App = () => {
                                 </div>
                             </div>
                             <div className="input-group">
-                                <label htmlFor="tableNumber">Table Number:</label>
+                                <label htmlFor="tableNumber">Table Name/Number:</label> {/* Updated label */}
                                 <input
                                     type="text"
                                     id="tableNumber"
