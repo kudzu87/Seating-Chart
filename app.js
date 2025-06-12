@@ -235,8 +235,8 @@ const App = () => {
                 });
             }
         });
-        // Update startMousePos to the current *snapped* mouse position for the next movement calculation
-        // This prevents cumulative rounding errors when dragging
+        // Update startMousePos to the current *raw* mouse position for the next movement calculation
+        // This is crucial for consistent delta calculation, as elements snap but the mouse moves smoothly.
         setStartMousePos({ x: newMouseX, y: newMouseY });
     }, [draggedElementId, startMousePos, snapToGrid]);
 
@@ -408,7 +408,7 @@ const App = () => {
         const strokeWidth = isSelected ? '4' : '2';
 
         // Apply rotation transform to the group
-        const transform = `rotate(${rotation || 0}, ${x}, ${y})`; // Use rotation property, default to 0
+        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`; // Ensure numbers for rotation transform
 
         return (
             <g // Group element for table
@@ -418,12 +418,29 @@ const App = () => {
                 transform={transform} // Apply the rotation here
             >
                 {isRound ? (
-                    <circle cx={x} cy={y} r={width / 2} fill="#9CA3AF" stroke={strokeColor} strokeWidth={strokeWidth} rx="10" ry="10" />
+                    <circle
+                        cx={Number(x)}
+                        cy={Number(y)}
+                        r={Number(width / 2)}
+                        fill="#9CA3AF"
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        rx="10" ry="10"
+                    />
                 ) : (
-                    <rect x={x - width / 2} y={y - height / 2} width={width} height={height} fill="#9CA3AF" stroke={strokeColor} strokeWidth={strokeWidth} rx="10" ry="10" />
+                    <rect
+                        x={Number(x - width / 2)}
+                        y={Number(y - height / 2)}
+                        width={Number(width)}
+                        height={Number(height)}
+                        fill="#9CA3AF"
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        rx="10" ry="10"
+                    />
                 )}
                 {/* Table label */}
-                <text x={x} y={y + (isRound ? 5 : 0)} textAnchor="middle" alignmentBaseline="middle" fill="#1F2937" fontSize="12" fontWeight="bold">
+                <text x={Number(x)} y={Number(y + (isRound ? 5 : 0))} textAnchor="middle" alignmentBaseline="middle" fill="#1F2937" fontSize="12" fontWeight="bold">
                     Guest Table
                 </text>
             </g>
@@ -445,8 +462,8 @@ const App = () => {
             >
                 {/* Line representing the chair */}
                 <line
-                    x1={x - chairLineLength / 2} y1={y}
-                    x2={x + chairLineLength / 2} y2={y}
+                    x1={Number(x - chairLineLength / 2)} y1={Number(y)}
+                    x2={Number(x + chairLineLength / 2)} y2={Number(y)}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
                     strokeLinecap="round" // Gives the line rounded ends
@@ -454,8 +471,8 @@ const App = () => {
                 {/* Display guest name if available */}
                 {guestName && (
                     <text
-                        x={x}
-                        y={y + 15} // Position below the line
+                        x={Number(x)}
+                        y={Number(y + 15)} // Position below the line
                         fill="#374151" // Text color
                         fontSize="12" // Increased font size
                         textAnchor="middle"
@@ -484,8 +501,17 @@ const App = () => {
                 onTouchStart={(e) => onMouseDown(e, id)}
                 style={{ cursor: 'grab' }}
             >
-                <rect x={x - width / 2} y={y - height / 2} width={width} height={height} fill="#FECACA" stroke={strokeColor} strokeWidth={strokeWidth} rx="10" ry="10" />
-                <text x={x} y={y} textAnchor="middle" alignmentBaseline="middle" fill="#B91C1C" fontSize="14" fontWeight="bold">
+                <rect
+                    x={Number(x - width / 2)}
+                    y={Number(y - height / 2)}
+                    width={Number(width)}
+                    height={Number(height)}
+                    fill="#FECACA"
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
+                    rx="10" ry="10"
+                />
+                <text x={Number(x)} y={Number(y)} textAnchor="middle" alignmentBaseline="middle" fill="#B91C1C" fontSize="14" fontWeight="bold">
                     Food Table
                 </text>
             </g>
@@ -500,7 +526,7 @@ const App = () => {
         const strokeWidth = isSelected ? '3' : '1';
 
         // Apply rotation transform around the wall's center
-        const transform = `rotate(${rotation || 0}, ${x}, ${y})`;
+        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`; // Ensure numbers for rotation transform
 
         return (
             <g
@@ -510,16 +536,16 @@ const App = () => {
                 transform={transform}
             >
                 <rect
-                    x={x - width / 2}
-                    y={y - height / 2}
-                    width={width}
-                    height={height}
+                    x={Number(x - width / 2)}
+                    y={Number(y - height / 2)}
+                    width={Number(width)}
+                    height={Number(height)}
                     fill={fillColor}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
                     rx="2" ry="2" // Slightly rounded corners for walls
                 />
-                <text x={x} y={y + 5} textAnchor="middle" alignmentBaseline="middle" fill="#374151" fontSize="10" fontWeight="bold">
+                <text x={Number(x)} y={Number(y + 5)} textAnchor="middle" alignmentBaseline="middle" fill="#374151" fontSize="10" fontWeight="bold">
                     Wall
                 </text>
             </g>
@@ -739,10 +765,10 @@ const App = () => {
                     {Array.from({ length: roomWidth / gridSize }).map((_, i) => (
                         <line
                             key={`v-grid-${i}`}
-                            x1={i * gridSize}
+                            x1={Number(i * gridSize)}
                             y1="0"
-                            x2={i * gridSize}
-                            y2={roomHeight}
+                            x2={Number(i * gridSize)}
+                            y2={Number(roomHeight)}
                             stroke="#E5E7EB" // Light gray
                             strokeWidth="0.5"
                         />
@@ -751,9 +777,9 @@ const App = () => {
                         <line
                             key={`h-grid-${i}`}
                             x1="0"
-                            y1={i * gridSize}
-                            x2={roomWidth}
-                            y2={i * gridSize}
+                            y1={Number(i * gridSize)}
+                            x2={Number(roomWidth)}
+                            y2={Number(i * gridSize)}
                             stroke="#E5E7EB" // Light gray
                             strokeWidth="0.5"
                         />
