@@ -31,7 +31,7 @@ const App = () => {
     // New state for grid size
     const gridSize = 25; // Define the snap-to-grid size
 
-    // Get the currently selected element object - MOVED HERE to ensure it's always defined before use
+    // Get the currently selected element object
     const selectedElement = elements.find((el) => el.id === selectedElementId);
 
     // Helper function to snap a coordinate to the grid
@@ -47,8 +47,10 @@ const App = () => {
         // Adjust initial position to be centered within the current view
         // This makes new elements appear in the visible area more reliably
         const currentSvgRect = svgRef.current?.getBoundingClientRect();
+        // Use fallbacks for centerX/Y in case svgRef.current is null initially
         const centerX = currentSvgRect ? currentSvgRect.width / 2 : roomWidth / 2;
         const centerY = currentSvgRect ? currentSvgRect.height / 2 : roomHeight / 2;
+
 
         // Snap initial position to grid
         const snappedCenterX = snapToGrid(centerX);
@@ -615,9 +617,9 @@ const App = () => {
             <h1 className="text-4xl font-bold text-purple-700 mb-6 drop-shadow-lg">Wedding Seating Chart</h1>
 
             {/* Room Dimension Controls */}
-            <div className="bg-white p-4 rounded-xl shadow-lg flex flex-wrap gap-4 mb-6 justify-center">
-                <div className="input-group">
-                    <label htmlFor="roomWidth">Room Width (px):</label>
+            <div className="bg-white p-2 rounded-xl shadow-lg flex flex-wrap gap-2 mb-4 justify-center w-full max-w-sm"> {/* Smaller padding and width */}
+                <div className="input-group flex-1">
+                    <label htmlFor="roomWidth" className="text-sm">Room Width (px):</label>
                     <input
                         type="number"
                         id="roomWidth"
@@ -625,11 +627,11 @@ const App = () => {
                         value={roomWidth}
                         onChange={handleRoomDimensionChange}
                         min="100"
-                        className="border border-gray-300 p-2 rounded-lg"
+                        className="border border-gray-300 p-1 rounded-md text-sm w-full" /* Smaller padding and font size */
                     />
                 </div>
-                <div className="input-group">
-                    <label htmlFor="roomHeight">Room Height (px):</label>
+                <div className="input-group flex-1">
+                    <label htmlFor="roomHeight" className="text-sm">Room Height (px):</label>
                     <input
                         type="number"
                         id="roomHeight"
@@ -637,46 +639,46 @@ const App = () => {
                         value={roomHeight}
                         onChange={handleRoomDimensionChange}
                         min="100"
-                        className="border border-gray-300 p-2 rounded-lg"
+                        className="border border-gray-300 p-1 rounded-md text-sm w-full" /* Smaller padding and font size */
                     />
                 </div>
             </div>
 
             {/* Controls for adding elements */}
-            <div className="bg-white p-4 rounded-xl shadow-lg flex flex-wrap gap-4 mb-6 justify-center">
+            <div className="bg-white p-2 rounded-xl shadow-lg flex flex-wrap gap-2 mb-4 justify-center"> {/* Reduced padding and gap */}
                 <button
                     onClick={() => addElement('table', 'round')}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
                 >
                     Add Round Table
                 </button>
                 <button
                     onClick={() => addElement('table', 'rectangle')}
-                    className="px-6 py-3 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75"
                 >
                     Add Rectangle Table
                 </button>
                 <button
                     onClick={handleAddGuestClick} // Updated to handle guest assignment to chairs
-                    className="px-6 py-3 bg-purple-500 text-white rounded-lg shadow-md hover:bg-purple-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-purple-500 text-white rounded-lg shadow-md hover:bg-purple-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-opacity-75"
                 >
                     Assign Guest to Chair
                 </button>
                 <button
                     onClick={() => addElement('foodTable')}
-                    className="px-6 py-3 bg-yellow-500 text-white rounded-lg shadow-md hover:bg-yellow-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-yellow-500 text-white rounded-lg shadow-md hover:bg-yellow-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-75"
                 >
                     Add Food Table
                 </button>
                 <button
                     onClick={() => addElement('chair')} // Adjusted to add at center
-                    className="px-6 py-3 bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg shadow-md hover:bg-indigo-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75"
                 >
                     Add Chair
                 </button>
                 <button
                     onClick={() => addElement('wall')} // New button for walls
-                    className="px-6 py-3 bg-gray-500 text-white rounded-lg shadow-md hover:bg-gray-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg shadow-md hover:bg-gray-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75"
                 >
                     Add Wall
                 </button>
@@ -685,7 +687,7 @@ const App = () => {
                         setElements([]);
                         setSelectedElementId(null); // Deselect everything when clearing
                     }}
-                    className="px-6 py-3 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75"
+                    className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75"
                 >
                     Clear All
                 </button>
@@ -751,15 +753,19 @@ const App = () => {
             )}
 
             {/* Seating Chart Canvas */}
-            <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl border-4 border-dashed border-gray-300 overflow-hidden relative" style={{ height: '70vh' }}>
+            {/* Changed max-w-4xl to w-full for full width */}
+            <div className="w-full bg-white rounded-xl shadow-xl border-4 border-dashed border-gray-300 overflow-hidden relative" style={{ height: '70vh' }}>
                 <svg
                     ref={svgRef}
                     width={roomWidth}  // Use roomWidth state
                     height={roomHeight} // Use roomHeight state
                     viewBox={`0 0 ${roomWidth} ${roomHeight}`} // Set viewBox to match dimensions for scaling
                     className={`block ${draggedElementId ? 'cursor-grabbing' : 'cursor-default'}`}
+                    // Ensure SVG itself scales to fill its parent div.
+                    // The width/height attributes here are for the internal coordinate system,
+                    // while CSS `width: 100%; height: 100%;` will make it fill the container.
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     onClick={handleSvgClick} // Handle clicks on SVG background to deselect
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} // Ensure responsiveness
                 >
                     {/* Grid Lines (Optional - for visual reference) */}
                     {Array.from({ length: roomWidth / gridSize }).map((_, i) => (
