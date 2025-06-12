@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+// Removed Firebase imports as cloud save functionality is removed
+// import { initializeApp } from 'firebase/app';
+// import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+// import { getFirestore, doc, setDoc, onSnapshot, collection, query, getDocs } from 'firebase/firestore';
 
 // Main App component
 const App = () => {
@@ -7,37 +11,175 @@ const App = () => {
     // State to track the currently dragged element ID
     const [draggedElementId, setDraggedElementId] = useState(null);
     // State to store the initial mouse offset from the dragged element's origin
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); // Renamed from startMousePos for clarity
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     // Ref for the SVG canvas to get its position
     const svgRef = useRef(null);
     // Ref for the properties panel to get its dimensions
     const propertiesPanelRef = useRef(null);
+    // Ref for the file input for uploading projects
+    const fileInputRef = useRef(null);
 
     // State to track the currently selected element for property editing
     const [selectedElementId, setSelectedElementId] = useState(null);
     // State for dynamic positioning of the properties panel
     const [panelPosition, setPanelPosition] = useState({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 });
 
-
     // State for the guest name input modal
     const [showGuestNameModal, setShowGuestNameModal] = useState(false);
     const [guestNameInput, setGuestNameInput] = useState('');
-    const [guestModalContext, setGuestModalContext] = useState(null); // 'add' or 'edit'
+    const [guestModalContext, setGuestModalContext] = useState(null);
 
     // State for the generic message modal (e.g., "Please select a chair")
     const [showMessageModal, setShowMessageModal] = useState(false);
     const [messageModalContent, setMessageModalContent] = useState('');
 
+    // Removed Firestore and authentication states as cloud save is removed
+    // const [db, setDb] = useState(null);
+    // const [auth, setAuth] = useState(null);
+    // const [userId, setUserId] = useState(null);
+    // const [loading, setLoading] = useState(true); // Loading state for initial data fetch
+    // const [saveStatus, setSaveStatus] = useState(''); // Status message for saving
 
-    // New state for room dimensions
-    const [roomWidth, setRoomWidth] = useState(800); // Default room width
-    const [roomHeight, setRoomHeight] = useState(600); // Default room height
+    // Room dimensions
+    const [roomWidth, setRoomWidth] = useState(800);
+    const [roomHeight, setRoomHeight] = useState(600);
 
-    // New state for grid size
-    const gridSize = 25; // Define the snap-to-grid size
+    // Grid size for snapping
+    const gridSize = 25;
 
     // Get the currently selected element object
     const selectedElement = elements.find((el) => el.id === selectedElementId);
+
+    // Removed Firebase Initialization and Authentication useEffect as cloud save is removed
+    /*
+    useEffect(() => {
+        try {
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            if (!firebaseConfig) {
+                console.error("Firebase config not found.");
+                setMessageModalContent("Firebase is not configured. Saving and loading will not work.");
+                setShowMessageModal(true);
+                setLoading(false);
+                return;
+            }
+
+            const app = initializeApp(firebaseConfig);
+            const firestore = getFirestore(app);
+            const firebaseAuth = getAuth(app);
+
+            setDb(firestore);
+            setAuth(firebaseAuth);
+
+            const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+                if (user) {
+                    setUserId(user.uid);
+                    loadProject(firestore, user.uid, appId);
+                } else {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(firebaseAuth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(firebaseAuth);
+                        }
+                    } catch (error) {
+                        console.error("Firebase Anonymous Auth Error:", error);
+                        setMessageModalContent(`Authentication failed: ${error.message}. Saving and loading may not work.`);
+                        setShowMessageModal(true);
+                        setLoading(false);
+                    }
+                }
+            });
+
+            return () => unsubscribe();
+        } catch (error) {
+            console.error("Firebase Initialization Error:", error);
+            setMessageModalContent(`Error initializing app: ${error.message}. Saving and loading will not work.`);
+            setShowMessageModal(true);
+            setLoading(false);
+        }
+    }, []);
+    */
+
+    // Removed loadProject and saveProject functions and related useEffects as cloud save is removed
+    /*
+    const loadProject = useCallback(async (firestore, currentUserId, currentAppId) => {
+        setLoading(true);
+        try {
+            const projectDocRef = doc(firestore, 'artifacts', currentAppId, 'users', currentUserId, 'seating_projects', 'current_project');
+
+            const unsubscribe = onSnapshot(projectDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const savedData = docSnap.data();
+                    if (savedData && savedData.elements) {
+                        setElements(JSON.parse(savedData.elements));
+                        setRoomWidth(savedData.roomWidth || 800);
+                        setRoomHeight(savedData.roomHeight || 600);
+                    } else {
+                        setElements([]);
+                    }
+                } else {
+                    setElements([]);
+                }
+                setLoading(false);
+            }, (error) => {
+                console.error("Error listening to project document:", error);
+                setMessageModalContent(`Error loading project from cloud: ${error.message}`);
+                setShowMessageModal(true);
+                setLoading(false);
+            });
+
+            return unsubscribe;
+        } catch (error) {
+            console.error("Error setting up project listener:", error);
+            setMessageModalContent(`Error setting up project listener: ${error.message}`);
+            setShowMessageModal(true);
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let unsubscribe;
+        if (db && userId) {
+            unsubscribe = loadProject(db, userId, appId);
+        }
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [db, userId, loadProject]);
+
+    const saveProject = useCallback(async () => {
+        if (!db || !userId) {
+            setMessageModalContent("Cannot save to cloud: Not authenticated or database not ready.");
+            setShowMessageModal(true);
+            return;
+        }
+        setSaveStatus("Saving to cloud...");
+        try {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const projectDocRef = doc(db, 'artifacts', appId, 'users', userId, 'seating_projects', 'current_project');
+
+            const elementsString = JSON.stringify(elements);
+
+            await setDoc(projectDocRef, {
+                elements: elementsString,
+                roomWidth: roomWidth,
+                roomHeight: roomHeight,
+                lastSaved: new Date()
+            });
+            setSaveStatus("Project saved to cloud!");
+            setTimeout(() => setSaveStatus(''), 3000);
+        } catch (error) {
+            console.error("Error saving project to cloud:", error);
+            setSaveStatus("Cloud save failed!");
+            setMessageModalContent(`Error saving project to cloud: ${error.message}`);
+            setShowMessageModal(true);
+            setTimeout(() => setSaveStatus(''), 3000);
+        }
+    }, [db, userId, elements, roomWidth, roomHeight]);
+    */
 
     // Helper function to snap a coordinate to the grid
     const snapToGrid = (coord) => {
@@ -49,15 +191,10 @@ const App = () => {
         let newPrimaryElement;
         const newElements = [];
 
-        // Adjust initial position to be centered within the current view
-        // This makes new elements appear in the visible area more reliably
         const currentSvgRect = svgRef.current?.getBoundingClientRect();
-        // Use fallbacks for centerX/Y in case svgRef.current is null initially
         const centerX = currentSvgRect ? currentSvgRect.width / 2 : roomWidth / 2;
         const centerY = currentSvgRect ? currentSvgRect.height / 2 : roomHeight / 2;
 
-
-        // Snap initial position to grid
         const snappedCenterX = snapToGrid(centerX);
         const snappedCenterY = snapToGrid(centerY);
 
@@ -68,27 +205,25 @@ const App = () => {
             if (shape === 'round') {
                 defaultWidth = 100;
                 defaultHeight = 100;
-            } else { // shape === 'rectangle'
-                defaultWidth = 50; // Rectangular width: 50
-                defaultHeight = 100; // Rectangular height: 100
+            } else {
+                defaultWidth = 50;
+                defaultHeight = 100;
             }
 
             newPrimaryElement = {
                 id: tableId,
                 type: type,
-                x: snappedCenterX, // Place new table in center, snapped to grid
-                y: snappedCenterY, // Place new table in center, snapped to grid
+                x: snappedCenterX,
+                y: snappedCenterY,
                 shape: shape,
                 width: defaultWidth,
                 height: defaultHeight,
-                rotation: 0, // Default to 0 degrees
-                tableNumber: '', // New: Default empty string for table number
+                rotation: 0,
+                tableNumber: '',
             };
             newElements.push(newPrimaryElement);
 
-            // Add initial chairs based on table shape
-            const chairDistance = 20; // Adjusted chair distance from table edge
-            const chairLineLength = 15; // Length of the chair line placeholder
+            const chairDistance = 20;
 
             if (shape === 'round') {
                 const defaultChairCount = 8;
@@ -102,34 +237,32 @@ const App = () => {
                     newElements.push({
                         id: `chair-${Date.now()}-${i}`,
                         type: 'chair',
-                        x: snapToGrid(chairX), // Snap chair position
-                        y: snapToGrid(chairY), // Snap chair position
-                        parentId: tableId, // Link chair to the table
-                        guestName: '', // New: Guest name property for chair
+                        x: snapToGrid(chairX),
+                        y: snapToGrid(chairY),
+                        parentId: tableId,
+                        guestName: '',
                     });
                 }
-            } else { // shape === 'rectangle'
+            } else {
                 const chairsPerSide = 4;
                 const halfWidth = defaultWidth / 2;
                 const halfHeight = defaultHeight / 2;
 
-                // Place chairs on the longer sides (which are now vertical sides by default)
-                // Chairs along the height (longer) sides
                 for (let i = 0; i < chairsPerSide; i++) {
-                    const yOffset = -halfHeight + (i + 0.5) * (defaultHeight / chairsPerSide); // Distribute along height evenly
+                    const yOffset = -halfHeight + (i + 0.5) * (defaultHeight / chairsPerSide);
                     newElements.push({
                         id: `chair-${Date.now()}-left-${i}`,
                         type: 'chair',
-                        x: snapToGrid(snappedCenterX - halfWidth - chairDistance), // Snap chair position
-                        y: snapToGrid(snappedCenterY + yOffset), // Snap chair position
+                        x: snapToGrid(snappedCenterX - halfWidth - chairDistance),
+                        y: snapToGrid(snappedCenterY + yOffset),
                         parentId: tableId,
                         guestName: '',
                     });
                     newElements.push({
                         id: `chair-${Date.now()}-right-${i}`,
                         type: 'chair',
-                        x: snapToGrid(snappedCenterX + halfWidth + chairDistance), // Snap chair position
-                        y: snapToGrid(snappedCenterY + yOffset), // Snap chair position
+                        x: snapToGrid(snappedCenterX + halfWidth + chairDistance),
+                        y: snapToGrid(snappedCenterY + yOffset),
                         parentId: tableId,
                         guestName: '',
                     });
@@ -139,57 +272,54 @@ const App = () => {
             newPrimaryElement = {
                 id: `${type}-${Date.now()}`,
                 type: type,
-                x: snappedCenterX, // Place new food table in center, snapped
-                y: snappedCenterY, // Place new food table in center, snapped
+                x: snappedCenterX,
+                y: snappedCenterY,
                 width: 150,
                 height: 80,
+                rotation: 0,
+                name: 'Food Table',
             };
             newElements.push(newPrimaryElement);
         } else if (type === 'chair') {
             newPrimaryElement = {
                 id: `${type}-${Date.now()}`,
                 type: type,
-                x: snappedCenterX, // Place new standalone chair in center, snapped
-                y: snappedCenterY, // Place new standalone chair in center, snapped
-                parentId: null, // Standalone chair has no parent table
-                guestName: guestName || '', // Guest name can be set on creation
+                x: snappedCenterX,
+                y: snappedCenterY,
+                parentId: null,
+                guestName: guestName || '',
             };
             newElements.push(newPrimaryElement);
-        } else if (type === 'wall') { // New wall element type
+        } else if (type === 'wall') {
             newPrimaryElement = {
                 id: `${type}-${Date.now()}`,
                 type: type,
-                x: snappedCenterX, // snapped
-                y: snappedCenterY, // snapped
+                x: snappedCenterX,
+                y: snappedCenterY,
                 width: 150,
-                height: 20, // Default thin wall
+                height: 20,
                 rotation: 0,
             };
             newElements.push(newPrimaryElement);
         }
 
-
         setElements((prevElements) => [...prevElements, ...newElements]);
-        // Select the primary new element if it exists
         if (newPrimaryElement) {
             setSelectedElementId(newPrimaryElement.id);
         }
     };
 
-    // Callback for when dragging starts or an element is selected
     const handleMouseDown = useCallback((e, elementId) => {
-        e.stopPropagation(); // Prevent SVG pan/zoom if applicable (not implemented here but good practice)
+        e.stopPropagation();
 
-        setSelectedElementId(elementId); // Set the selected element ID
+        setSelectedElementId(elementId);
 
         const draggedEl = elements.find(el => el.id === elementId);
         if (!draggedEl || !svgRef.current || !propertiesPanelRef.current) return;
 
-        // Calculate and set panel position immediately on selection
         const svgRect = svgRef.current.getBoundingClientRect();
-        // Use default panel dimensions if ref is not yet available, to prevent layout shift initially
-        const panelWidth = propertiesPanelRef.current.offsetWidth || 384; // max-w-sm is 384px in Tailwind
-        const panelHeight = propertiesPanelRef.current.offsetHeight || 400; // Estimate a common height
+        const panelWidth = propertiesPanelRef.current.offsetWidth || 384;
+        const panelHeight = propertiesPanelRef.current.offsetHeight || 400;
 
         const padding = 20;
 
@@ -198,22 +328,17 @@ const App = () => {
         let newTop = padding;
         let newBottom = 'auto';
 
-        // Use the element's center X relative to the SVG's internal coordinate system
         const elementCenterX = draggedEl.x;
-        const roomHalfWidth = roomWidth / 2; // Assuming roomWidth is the max possible X for SVG
+        const roomHalfWidth = roomWidth / 2;
 
         if (elementCenterX < roomHalfWidth) {
-            // Element is on the left half of the room, so place panel on the right side of the viewport
             newRight = padding;
-            newLeft = 'auto'; // Ensure left is not set
+            newLeft = 'auto';
         } else {
-            // Element is on the right half of the room, so place panel on the left side of the viewport
             newLeft = padding;
-            newRight = 'auto'; // Ensure right is not set
+            newRight = 'auto';
         }
 
-        // Adjust vertical position to roughly center the panel in the available vertical space
-        // or ensure it fits within the viewport.
         const availableHeight = window.innerHeight - 2 * padding;
         const centerOffset = (availableHeight - panelHeight) / 2;
         newTop = Math.max(padding, Math.min(window.innerHeight - panelHeight - padding, padding + centerOffset));
@@ -228,7 +353,6 @@ const App = () => {
             zIndex: 50
         });
 
-        // Continue with drag setup
         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
 
@@ -237,12 +361,10 @@ const App = () => {
             x: clientX - svgRect.left - draggedEl.x,
             y: clientY - svgRect.top - draggedEl.y,
         });
-    }, [elements, roomWidth, roomHeight]); // dependencies: elements (for draggedEl), roomWidth/Height (for halfWidth logic)
+    }, [elements, roomWidth, roomHeight]);
 
-
-    // Callback for when mouse/touch moves
     const handleMouseMove = useCallback((e) => {
-        if (!draggedElementId || dragOffset === null) return; // Use dragOffset instead of startMousePos
+        if (!draggedElementId || dragOffset === null) return;
 
         const svgRect = svgRef.current.getBoundingClientRect();
         const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
@@ -251,56 +373,43 @@ const App = () => {
         const currentMouseXRelativeToSvg = clientX - svgRect.left;
         const currentMouseYRelativeToSvg = clientY - svgRect.top;
 
-        // Calculate the desired (raw) new position of the element's origin,
-        // by subtracting the stored offset from the current mouse position.
         const desiredElementX = currentMouseXRelativeToSvg - dragOffset.x;
         const desiredElementY = currentMouseYRelativeToSvg - dragOffset.y;
 
-        // Snap the desired position to the grid
         const snappedNewX = snapToGrid(desiredElementX);
         const snappedNewY = snapToGrid(desiredElementY);
 
         setElements((prevElements) => {
             const updatedElements = prevElements.map((el) => {
                 if (el.id === draggedElementId) {
-                    // Return the dragged element with its new snapped position
                     return { ...el, x: snappedNewX, y: snappedNewY };
                 } else if (el.type === 'chair' && el.parentId === draggedElementId) {
-                    // If it's a child chair, calculate its new position relative to the table's movement
-                    // This requires finding the table's *old* position from prevElements
                     const parentTable = prevElements.find(p => p.id === draggedElementId);
-                    if (!parentTable) return el; // Should not happen if parentId is correct
+                    if (!parentTable) return el;
 
-                    // The change in parent's position
                     const deltaX = snappedNewX - parentTable.x;
                     const deltaY = snappedNewY - parentTable.y;
 
-                    // Move chair by the same delta
                     return { ...el, x: snapToGrid(el.x + deltaX), y: snapToGrid(el.y + deltaY) };
                 }
                 return el;
             });
             return updatedElements;
         });
-    }, [draggedElementId, dragOffset, snapToGrid]); // dragOffset is now a dependency
+    }, [draggedElementId, dragOffset, snapToGrid]);
 
-    // Callback for when dragging ends
     const handleMouseUp = useCallback(() => {
-        setDraggedElementId(null); // Clear the dragged element
-        setDragOffset({ x: 0, y: 0 }); // Reset offset
+        setDraggedElementId(null);
+        setDragOffset({ x: 0, y: 0 });
     }, []);
 
-    // Handler for clicking on the SVG background to deselect
     const handleSvgClick = useCallback((e) => {
-        // Only deselect if the click target is the SVG itself, not an element within it
         if (e.target === svgRef.current) {
             setSelectedElementId(null);
-            // Hide the properties panel when clicking on the background
             setPanelPosition({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 });
         }
     }, []);
 
-    // Set up global event listeners for dragging
     useEffect(() => {
         const svgElement = svgRef.current;
         if (svgElement) {
@@ -317,36 +426,33 @@ const App = () => {
                 svgElement.removeEventListener('touchend', handleMouseUp);
             }
         };
-    }, [handleMouseMove, handleMouseUp]); // Re-attach if handlers change (though they are memoized)
+    }, [handleMouseMove, handleMouseUp]);
 
-    // Handler for updating properties of a selected element
     const handlePropertyChange = useCallback((e) => {
         const { name, value, type } = e.target;
         setElements((prevElements) =>
             prevElements.map((el) => {
                 if (el.id === selectedElementId) {
-                    // Handle guestName for chairs
                     if (el.type === 'chair' && name === 'guestName') {
                         return { ...el, guestName: value };
                     }
-                    // Handle tableNumber for tables
                     if (el.type === 'table' && name === 'tableNumber') {
                         return { ...el, tableNumber: value };
                     }
+                    if (el.type === 'foodTable' && name === 'name') {
+                        return { ...el, name: value };
+                    }
 
-                    let updatedValue = value;
                     if (type === 'number') {
-                        const parsedValue = parseFloat(value);
-                        // Ensure a valid number, default to 10 for width/height if invalid or too small, else 0
-                        if ((name === 'width' || name === 'height')) {
-                             updatedValue = isNaN(parsedValue) || parsedValue < 1 ? 10 : parsedValue;
-                        } else {
-                            updatedValue = isNaN(parsedValue) ? 0 : parsedValue;
-                        }
+                        const parsed = parseFloat(value);
+                        return {
+                            ...el,
+                            [name]: isNaN(parsed) ? (value === '' ? '' : 0) : parsed,
+                        };
                     }
                     return {
                         ...el,
-                        [name]: updatedValue,
+                        [name]: value,
                     };
                 }
                 return el;
@@ -354,42 +460,37 @@ const App = () => {
         );
     }, [selectedElementId]);
 
-    // Handler for deleting a selected element (and its children if it's a table)
     const handleDeleteElement = useCallback(() => {
         setElements((prevElements) => {
             const elementToDelete = prevElements.find(el => el.id === selectedElementId);
             if (!elementToDelete) return prevElements;
 
             if (elementToDelete.type === 'table') {
-                // Filter out the table itself and all chairs linked to it
                 return prevElements.filter(el =>
                     el.id !== selectedElementId && el.parentId !== selectedElementId
                 );
             } else {
-                // For other types, just filter out the selected element
                 return prevElements.filter((el) => el.id !== selectedElementId);
             }
         });
-        setSelectedElementId(null); // Deselect after deleting
-        setPanelPosition({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 }); // Hide panel on delete
+        setSelectedElementId(null);
+        setPanelPosition({ top: 'auto', left: 'auto', right: 'auto', bottom: 20, opacity: 0 });
     }, [selectedElementId]);
 
-    // Function to rotate the selected table or wall
     const handleRotateElement = useCallback(() => {
         setElements(prevElements => {
             const selectedEl = prevElements.find(el => el.id === selectedElementId);
-            if (!selectedEl || (selectedEl.type !== 'table' && selectedEl.type !== 'wall')) {
-                return prevElements; // Only rotate tables and walls
+            if (!selectedEl || (selectedEl.type !== 'table' && selectedEl.type !== 'wall' && selectedEl.type !== 'foodTable')) {
+                return prevElements;
             }
 
             const newRotation = (selectedEl.rotation + 15) % 360;
-            const deltaRotationRadians = ((newRotation - selectedEl.rotation + 360) % 360) * Math.PI / 180; // Ensure positive delta
+            const deltaRotationRadians = ((newRotation - selectedEl.rotation + 360) % 360) * Math.PI / 180;
 
             return prevElements.map(el => {
                 if (el.id === selectedElementId) {
                     return { ...el, rotation: newRotation };
                 } else if (el.type === 'chair' && el.parentId === selectedElementId) {
-                    // Rotate linked chairs around the table's center
                     const tableCenterX = selectedEl.x;
                     const tableCenterY = selectedEl.y;
 
@@ -399,8 +500,8 @@ const App = () => {
                     const rotatedX = translatedX * Math.cos(deltaRotationRadians) - translatedY * Math.sin(deltaRotationRadians);
                     const rotatedY = translatedX * Math.sin(deltaRotationRadians) + translatedY * Math.cos(deltaRotationRadians);
 
-                    const newChairX = snapToGrid(tableCenterX + rotatedX); // Snap rotated chair
-                    const newChairY = snapToGrid(tableCenterY + rotatedY); // Snap rotated chair
+                    const newChairX = snapToGrid(tableCenterX + rotatedX);
+                    const newChairY = snapToGrid(tableCenterY + rotatedY);
 
                     return { ...el, x: newChairX, y: newChairY };
                 }
@@ -409,11 +510,54 @@ const App = () => {
         });
     }, [selectedElementId, snapToGrid]);
 
+    // New function to copy the selected element
+    const handleCopyElement = useCallback(() => {
+        if (!selectedElement) {
+            setMessageModalContent("Please select an element to copy.");
+            setShowMessageModal(true);
+            return;
+        }
 
-    // Handler for room dimension changes
+        const copiedElements = [];
+        const copyOffset = gridSize; // Offset for new copied element
+
+        // Create a copy of the selected element
+        const newSelectedElement = {
+            ...selectedElement,
+            id: `${selectedElement.type}-${Date.now()}-copy`, // Generate new unique ID
+            x: snapToGrid(selectedElement.x + copyOffset), // Offset X
+            y: snapToGrid(selectedElement.y + copyOffset), // Offset Y
+        };
+        copiedElements.push(newSelectedElement);
+
+        // If the selected element is a table, copy its associated chairs as well
+        if (selectedElement.type === 'table') {
+            const originalTableId = selectedElement.id;
+            const newTableId = newSelectedElement.id;
+
+            elements.forEach(el => {
+                if (el.type === 'chair' && el.parentId === originalTableId) {
+                    copiedElements.push({
+                        ...el,
+                        id: `chair-${Date.now()}-copy-${Math.random()}`, // Unique ID for copied chair
+                        parentId: newTableId, // Link to the new table
+                        x: snapToGrid(el.x + copyOffset), // Offset X
+                        y: snapToGrid(el.y + copyOffset), // Offset Y
+                    });
+                }
+            });
+        }
+
+        setElements(prevElements => [...prevElements, ...copiedElements]);
+        setSelectedElementId(newSelectedElement.id); // Select the newly copied element
+        setMessageModalContent("Element copied successfully!");
+        setShowMessageModal(true);
+    }, [selectedElement, elements, snapToGrid]);
+
+
     const handleRoomDimensionChange = useCallback((e) => {
         const { name, value } = e.target;
-        const numValue = Math.max(100, parseFloat(value)); // Ensure minimum size
+        const numValue = Math.max(100, parseFloat(value));
         if (name === 'roomWidth') {
             setRoomWidth(numValue);
         } else if (name === 'roomHeight') {
@@ -421,7 +565,6 @@ const App = () => {
         }
     }, []);
 
-    // Guest name modal handlers
     const handleAddGuestClick = useCallback(() => {
         if (selectedElement && selectedElement.type === 'chair') {
             setGuestNameInput(selectedElement.guestName || '');
@@ -440,9 +583,6 @@ const App = () => {
                     el.id === selectedElementId ? { ...el, guestName: guestNameInput.trim() } : el
                 ));
             } else if (guestModalContext === 'add') {
-                // This path is less likely now, as 'Add Guest' focuses on editing existing chairs.
-                // If we ever want to add a chair *and* name it directly via this modal, we'd enable this.
-                // For now, it's primarily for editing selected chairs.
                 addElement('chair', null, guestNameInput.trim());
             }
         }
@@ -451,18 +591,15 @@ const App = () => {
         setGuestModalContext(null);
     }, [guestNameInput, guestModalContext, selectedElementId]);
 
-    // Function to generate and download guest list by table number
     const handleDownloadGuestList = useCallback(() => {
         const guestList = {};
         const tables = elements.filter(el => el.type === 'table');
 
-        // Create a map from table ID to table number for easy lookup
         const tableNumberMap = tables.reduce((acc, table) => {
             acc[table.id] = table.tableNumber || 'Unassigned Table';
             return acc;
         }, {});
 
-        // Group guests by table number
         elements.forEach(el => {
             if (el.type === 'chair' && el.guestName) {
                 const tableNum = tableNumberMap[el.parentId] || 'Standalone Chairs';
@@ -473,17 +610,13 @@ const App = () => {
             }
         });
 
-        // Format the data for download as a plain text string
         let textContent = "Wedding Guest List\n\n";
 
-        // Get sorted table numbers/categories
         const sortedTableNumbers = Object.keys(guestList).sort((a, b) => {
-            // Custom sort to put "Unassigned Table" and "Standalone Chairs" at the end
             if (a === 'Unassigned Table') return 1;
             if (b === 'Unassigned Table') return -1;
             if (a === 'Standalone Chairs') return 1;
             if (b === 'Standalone Chairs') return -1;
-            // Otherwise, sort numerically or alphabetically
             return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
         });
 
@@ -495,36 +628,91 @@ const App = () => {
             textContent += "\n";
         });
 
-        // Create a Blob and download link
-        const blob = new Blob([textContent], { type: 'text/plain' }); // Changed type to text/plain
+        const blob = new Blob([textContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'wedding_guest_list.txt'; // Changed filename extension
+        a.download = 'wedding_guest_list.txt';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url); // Clean up the URL object
+        URL.revokeObjectURL(url);
     }, [elements]);
 
+    // Function to download the entire project as a JSON file
+    const handleDownloadProject = useCallback(() => {
+        const projectData = {
+            elements: elements,
+            roomWidth: roomWidth,
+            roomHeight: roomHeight,
+            // Add any other state variables you want to save
+        };
+        const jsonString = JSON.stringify(projectData, null, 2); // Pretty print JSON
+
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wedding_seating_project.json'; // Suggested filename
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setMessageModalContent("Project downloaded successfully!");
+        setShowMessageModal(true);
+    }, [elements, roomWidth, roomHeight]);
+
+    // Function to handle uploading a project file
+    const handleUploadProject = useCallback((event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const loadedData = JSON.parse(e.target.result);
+                if (loadedData.elements && Array.isArray(loadedData.elements)) {
+                    setElements(loadedData.elements);
+                    setRoomWidth(loadedData.roomWidth || 800);
+                    setRoomHeight(loadedData.roomHeight || 600);
+                    setSelectedElementId(null); // Clear selection after loading
+                    setMessageModalContent("Project uploaded successfully!");
+                    setShowMessageModal(true);
+                } else {
+                    setMessageModalContent("Invalid project file format. Please upload a valid JSON project file.");
+                    setShowMessageModal(true);
+                }
+            } catch (error) {
+                console.error("Error parsing uploaded file:", error);
+                setMessageModalContent(`Error loading project file: ${error.message}. Please ensure it's a valid JSON.`);
+                setShowMessageModal(true);
+            }
+        };
+        reader.readAsText(file);
+        // Clear the file input value so that the same file can be selected again
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }, []);
 
     // Component to render a single Table
     const Table = ({ table, onMouseDown, isSelected }) => {
-        const { id, x, y, shape, width, height, rotation, tableNumber } = table; // Destructure rotation and tableNumber
+        const { id, x, y, shape, width, height, rotation, tableNumber } = table;
         const isRound = shape === 'round';
 
-        const strokeColor = isSelected ? '#3B82F6' : '#4B5563'; // Blue when selected, otherwise gray
+        const strokeColor = isSelected ? '#3B82F6' : '#4B5563';
         const strokeWidth = isSelected ? '4' : '2';
 
-        // Apply rotation transform to the group
-        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`; // Ensure numbers for rotation transform
+        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`;
 
         return (
-            <g // Group element for table
+            <g
                 onMouseDown={(e) => onMouseDown(e, id)}
                 onTouchStart={(e) => onMouseDown(e, id)}
                 style={{ cursor: 'grab' }}
-                transform={transform} // Apply the rotation here
+                transform={transform}
             >
                 {isRound ? (
                     <circle
@@ -548,7 +736,6 @@ const App = () => {
                         rx="10" ry="10"
                     />
                 )}
-                {/* Table label */}
                 <text x={Number(x)} y={Number(y - 10)} textAnchor="middle" alignmentBaseline="middle" fill="#1F2937" fontSize="12" fontWeight="bold">
                     {tableNumber ? `Table ${tableNumber}` : 'Guest Table'}
                 </text>
@@ -558,44 +745,41 @@ const App = () => {
 
     // Component to render a single Chair
     const Chair = ({ chair, onMouseDown, isSelected }) => {
-        const { id, x, y, guestName } = chair; // Destructure guestName
-        const strokeColor = isSelected ? '#3B82F6' : '#6B7280'; // Blue when selected, otherwise gray
+        const { id, x, y, guestName } = chair;
+        const strokeColor = isSelected ? '#3B82F6' : '#6B7280';
         const strokeWidth = isSelected ? '2' : '1';
-        const chairLineLength = 15; // Length of the line representing the chair
-        const hitBoxSize = 30; // Larger size for the invisible hitbox
+        const chairLineLength = 15;
+        const hitBoxSize = 30;
 
         return (
             <g>
-                {/* Invisible rectangle for larger clickable area */}
                 <rect
                     x={Number(x - hitBoxSize / 2)}
                     y={Number(y - hitBoxSize / 2)}
                     width={Number(hitBoxSize)}
                     height={Number(hitBoxSize)}
-                    fill="transparent" // Make it invisible
+                    fill="transparent"
                     cursor="grab"
                     onMouseDown={(e) => onMouseDown(e, id)}
                     onTouchStart={(e) => onMouseDown(e, id)}
                 />
-                {/* Line representing the chair (visual, small) */}
                 <line
                     x1={Number(x - chairLineLength / 2)} y1={Number(y)}
                     x2={Number(x + chairLineLength / 2)} y2={Number(y)}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    strokeLinecap="round" // Gives the line rounded ends
+                    strokeLinecap="round"
                 />
-                {/* Display guest name if available */}
                 {guestName && (
                     <text
                         x={Number(x)}
-                        y={Number(y - 5)} // Changed to be above the line
-                        fill="#374151" // Text color
-                        fontSize="12" // Increased font size
+                        y={Number(y - 5)}
+                        fill="#374151"
+                        fontSize="12"
                         textAnchor="middle"
-                        alignmentBaseline="alphabetic" // Adjusted for 'above' positioning
-                        fontWeight="bold" // Made text bold
-                        pointerEvents="none" // Important: prevents text from capturing click, allowing hitbox to work
+                        alignmentBaseline="alphabetic"
+                        fontWeight="bold"
+                        pointerEvents="none"
                     >
                         {guestName}
                     </text>
@@ -604,20 +788,19 @@ const App = () => {
         );
     };
 
-
-    // Removed Guest component as it's no longer a standalone element type
-
-    // Component to render a Food Table
     const FoodTable = ({ foodTable, onMouseDown, isSelected }) => {
-        const { id, x, y, width, height } = foodTable;
+        const { id, x, y, width, height, rotation, name } = foodTable;
         const strokeColor = isSelected ? '#3B82F6' : '#EF4444';
         const strokeWidth = isSelected ? '4' : '2';
+
+        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`;
 
         return (
             <g
                 onMouseDown={(e) => onMouseDown(e, id)}
                 onTouchStart={(e) => onMouseDown(e, id)}
                 style={{ cursor: 'grab' }}
+                transform={transform}
             >
                 <rect
                     x={Number(x - width / 2)}
@@ -630,21 +813,19 @@ const App = () => {
                     rx="10" ry="10"
                 />
                 <text x={Number(x)} y={Number(y)} textAnchor="middle" alignmentBaseline="middle" fill="#B91C1C" fontSize="14" fontWeight="bold">
-                    Food Table
+                    {name || 'Food Table'}
                 </text>
             </g>
         );
     };
 
-    // Component to render a Wall
     const Wall = ({ wall, onMouseDown, isSelected }) => {
         const { id, x, y, width, height, rotation } = wall;
-        const strokeColor = isSelected ? '#3B82F6' : '#6B7280'; // Blue when selected, otherwise gray
-        const fillColor = '#A1A1AA'; // A dark gray for walls
+        const strokeColor = isSelected ? '#3B82F6' : '#6B7280';
+        const fillColor = '#A1A1AA';
         const strokeWidth = isSelected ? '3' : '1';
 
-        // Apply rotation transform around the wall's center
-        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`; // Ensure numbers for rotation transform
+        const transform = `rotate(${Number(rotation || 0)}, ${Number(x)}, ${Number(y)})`;
 
         return (
             <g
@@ -661,7 +842,7 @@ const App = () => {
                     fill={fillColor}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    rx="2" ry="2" // Slightly rounded corners for walls
+                    rx="2" ry="2"
                 />
                 <text x={Number(x)} y={Number(y + 5)} textAnchor="middle" alignmentBaseline="middle" fill="#374151" fontSize="10" fontWeight="bold">
                     Wall
@@ -670,13 +851,8 @@ const App = () => {
         );
     };
 
-    // No dedicated useEffect for panel position updates.
-    // Position is set directly in handleMouseDown when an element is selected.
-    // It's hidden in handleSvgClick and handleDeleteElement.
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-100 to-pink-100 p-4 font-inter text-gray-800 flex flex-col items-center">
-            {/* Tailwind CSS and Font */}
             <script src="https://cdn.tailwindcss.com"></script>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
 
@@ -735,12 +911,26 @@ const App = () => {
 
             <h1 className="text-4xl font-bold text-purple-700 mb-6 drop-shadow-lg">Wedding Seating Chart</h1>
 
+            {/* User ID and Save Status - Removed as cloud save is removed */}
+            {/* <div className="text-sm text-gray-600 mb-2">
+                {userId ? `User ID: ${userId}` : 'Authenticating...'}
+                {saveStatus && <span className="ml-4 font-semibold text-blue-700">{saveStatus}</span>}
+            </div> */}
+            {/* Loading Indicator - Removed as cloud save is removed */}
+            {/* {loading && (
+                <div className="flex items-center justify-center mb-4 text-blue-600">
+                    <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading Project...
+                </div>
+            )} */}
+
             {/* Controls for adding elements and room dimensions */}
-            {/* Consolidated controls into one row, using flex-wrap for responsiveness */}
             <div className="bg-white p-2 rounded-xl shadow-lg flex flex-wrap gap-2 mb-4 justify-center w-full max-w-5xl">
-                {/* Room Dimension Controls - now inline with other buttons */}
-                <div className="input-group flex-1 min-w-[120px] max-w-[150px]"> {/* Adjusted width for smaller input */}
-                    <label htmlFor="roomWidth" className="text-xs">Room Width (px):</label> {/* Smaller font for label */}
+                <div className="input-group flex-1 min-w-[120px] max-w-[150px]">
+                    <label htmlFor="roomWidth" className="text-xs">Room Width (px):</label>
                     <input
                         type="number"
                         id="roomWidth"
@@ -751,8 +941,8 @@ const App = () => {
                         className="border border-gray-300 p-1 rounded-md text-sm w-full"
                     />
                 </div>
-                <div className="input-group flex-1 min-w-[120px] max-w-[150px]"> {/* Adjusted width for smaller input */}
-                    <label htmlFor="roomHeight" className="text-xs">Room Height (px):</label> {/* Smaller font for label */}
+                <div className="input-group flex-1 min-w-[120px] max-w-[150px]">
+                    <label htmlFor="roomHeight" className="text-xs">Room Height (px):</label>
                     <input
                         type="number"
                         id="roomHeight"
@@ -764,7 +954,6 @@ const App = () => {
                     />
                 </div>
 
-                {/* Main Action Buttons */}
                 <button
                     onClick={() => addElement('table', 'round')}
                     className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
@@ -801,8 +990,34 @@ const App = () => {
                 >
                     Add Wall
                 </button>
+                {/* Removed Save to Cloud Button */}
+                {/* <button
+                    onClick={saveProject}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+                >
+                    Save to Cloud
+                </button> */}
                 <button
-                    onClick={handleDownloadGuestList} // New button to download guest list
+                    onClick={handleDownloadProject}
+                    className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg shadow-md hover:bg-purple-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+                >
+                    Download Project File
+                </button>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleUploadProject}
+                    className="hidden"
+                    accept=".json"
+                />
+                <button
+                    onClick={() => fileInputRef.current.click()}
+                    className="px-4 py-2 text-sm bg-yellow-600 text-white rounded-lg shadow-md hover:bg-yellow-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75"
+                >
+                    Upload Project File
+                </button>
+                <button
+                    onClick={handleDownloadGuestList}
                     className="px-4 py-2 text-sm bg-teal-500 text-white rounded-lg shadow-md hover:bg-teal-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75"
                 >
                     Download Guest List
@@ -933,8 +1148,8 @@ const App = () => {
             {/* Properties Panel for Selected Element */}
             {selectedElement && (
                 <div
-                    ref={propertiesPanelRef} // Assign ref to the properties panel
-                    data-selected-id={selectedElementId} // Store selected ID for effect dependency
+                    ref={propertiesPanelRef}
+                    data-selected-id={selectedElementId}
                     style={{
                         position: panelPosition.position,
                         top: panelPosition.top,
@@ -943,16 +1158,16 @@ const App = () => {
                         bottom: panelPosition.bottom,
                         opacity: panelPosition.opacity,
                         zIndex: panelPosition.zIndex,
-                        transition: 'top 0.2s ease-out, left 0.2s ease-out, right 0.2s ease-out, opacity 0.2s ease-out', // Smooth transition
+                        transition: 'top 0.2s ease-out, left 0.2s ease-out, right 0.2s ease-out, opacity 0.2s ease-out',
                     }}
-                    className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border border-blue-200 flex flex-col gap-4" // Removed mt-6, fixed width for predictability
+                    className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border border-blue-200 flex flex-col gap-4"
                 >
                     <h3 className="text-2xl font-semibold text-gray-800">Properties: <span className="font-bold text-blue-600">
                         {selectedElement.type === 'table' ? 'Guest Table' :
                          selectedElement.type === 'foodTable' ? 'Food Table' :
                          selectedElement.type === 'chair' ? 'Chair' :
                          selectedElement.type === 'wall' ? 'Wall' :
-                         'Selected Element' // Fallback for unknown type
+                         'Selected Element'
                         }
                     </span></h3>
 
@@ -967,7 +1182,7 @@ const App = () => {
                                         name="width"
                                         value={selectedElement.width}
                                         onChange={handlePropertyChange}
-                                        min="10" // Minimum size
+                                        min="10"
                                         className="border border-gray-300 p-2 rounded-lg w-full"
                                     />
                                 </div>
@@ -979,12 +1194,12 @@ const App = () => {
                                         name="height"
                                         value={selectedElement.height}
                                         onChange={handlePropertyChange}
-                                        min="10" // Minimum size
+                                        min="10"
                                         className="border border-gray-300 p-2 rounded-lg w-full"
                                     />
                                 </div>
                             </div>
-                            <div className="input-group"> {/* New input for table number */}
+                            <div className="input-group">
                                 <label htmlFor="tableNumber">Table Number:</label>
                                 <input
                                     type="text"
@@ -1006,32 +1221,54 @@ const App = () => {
                     )}
 
                     {selectedElement.type === 'foodTable' && (
-                        <div className="flex gap-4">
-                            <div className="input-group flex-1">
-                                <label htmlFor="foodTableWidth">Width:</label>
-                                <input
-                                    type="number"
-                                    id="foodTableWidth"
-                                    name="width"
-                                    value={selectedElement.width}
-                                    onChange={handlePropertyChange}
-                                    min="10"
-                                    className="border border-gray-300 p-2 rounded-lg w-full"
-                                />
+                        <>
+                            <div className="flex gap-4">
+                                <div className="input-group flex-1">
+                                    <label htmlFor="foodTableName">Name:</label>
+                                    <input
+                                        type="text"
+                                        id="foodTableName"
+                                        name="name"
+                                        value={selectedElement.name || ''}
+                                        onChange={handlePropertyChange}
+                                        className="border border-gray-300 p-2 rounded-lg w-full"
+                                        placeholder="e.g., Buffet, Cake Table"
+                                    />
+                                </div>
                             </div>
-                            <div className="input-group flex-1">
-                                <label htmlFor="foodTableHeight">Height:</label>
-                                <input
-                                    type="number"
-                                    id="foodTableHeight"
-                                    name="height"
-                                    value={selectedElement.height}
-                                    onChange={handlePropertyChange}
-                                    min="10"
-                                    className="border border-gray-300 p-2 rounded-lg w-full"
-                                />
+                            <div className="flex gap-4">
+                                <div className="input-group flex-1">
+                                    <label htmlFor="foodTableWidth">Width:</label>
+                                    <input
+                                        type="number"
+                                        id="foodTableWidth"
+                                        name="width"
+                                        value={selectedElement.width}
+                                        onChange={handlePropertyChange}
+                                        min="10"
+                                        className="border border-gray-300 p-2 rounded-lg w-full"
+                                    />
+                                </div>
+                                <div className="input-group flex-1">
+                                    <label htmlFor="foodTableHeight">Height:</label>
+                                    <input
+                                        type="number"
+                                        id="foodTableHeight"
+                                        name="height"
+                                        value={selectedElement.height}
+                                        onChange={handlePropertyChange}
+                                        min="10"
+                                        className="border border-gray-300 p-2 rounded-lg w-full"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                            <button
+                                onClick={handleRotateElement}
+                                className="px-6 py-3 bg-gray-600 text-white rounded-lg shadow-md hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 mt-2"
+                            >
+                                Rotate Food Table (15°)
+                            </button>
+                        </>
                     )}
 
                     {selectedElement.type === 'chair' && (
@@ -1040,7 +1277,7 @@ const App = () => {
                             <input
                                 type="text"
                                 id="chairGuestName"
-                                name="guestName" // Use guestName for chair properties
+                                name="guestName"
                                 value={selectedElement.guestName}
                                 onChange={handlePropertyChange}
                                 className="border border-gray-300 p-2 rounded-lg w-full"
@@ -1048,7 +1285,7 @@ const App = () => {
                         </div>
                     )}
 
-                    {selectedElement.type === 'wall' && ( // Properties for wall
+                    {selectedElement.type === 'wall' && (
                         <>
                             <div className="flex gap-4">
                                 <div className="input-group flex-1">
@@ -1071,13 +1308,13 @@ const App = () => {
                                         name="height"
                                         value={selectedElement.height}
                                         onChange={handlePropertyChange}
-                                        min="1" // Walls can be very thin
+                                        min="1"
                                         className="border border-gray-300 p-2 rounded-lg w-full"
                                     />
                                 </div>
                             </div>
                             <button
-                                onClick={handleRotateElement} // Rotate walls
+                                onClick={handleRotateElement}
                                 className="px-6 py-3 bg-gray-600 text-white rounded-lg shadow-md hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 mt-2"
                             >
                                 Rotate Wall (15°)
@@ -1085,7 +1322,12 @@ const App = () => {
                         </>
                     )}
 
-                    {/* Delete button always available for selected elements */}
+                    <button
+                        onClick={handleCopyElement}
+                        className="px-6 py-3 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 mt-4"
+                    >
+                        Copy Selected Element
+                    </button>
                     <button
                         onClick={handleDeleteElement}
                         className="px-6 py-3 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 mt-4"
