@@ -446,9 +446,11 @@ const App = () => {
 
                     if (type === 'number') {
                         const parsed = parseFloat(value);
+                        // Ensure numerical properties are always numbers,
+                        // defaulting to 0 for invalid or empty input.
                         return {
                             ...el,
-                            [name]: isNaN(parsed) ? (value === '' ? '' : 0) : parsed,
+                            [name]: isNaN(parsed) ? 0 : parsed,
                         };
                     }
                     return {
