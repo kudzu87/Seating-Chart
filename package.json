@@ -6,6 +6,9 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
+  "devDependencies": {  <-- ADD THIS SECTION IF IT DOESN'T EXIST
+    "react-scripts": "5.0.1" <-- ADD THIS LINE (use the version compatible with your React)
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
